@@ -4,6 +4,9 @@ import com.dropbox.core.DbxException;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.Metadata;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -28,17 +31,18 @@ public class DocumentController {
     }
 
     @RequestMapping(value = "/name/{name}", method = RequestMethod.GET, produces = "application/json")
-    public List<Document> getByTagName(@PathVariable String name) {
-        return documentRepository.findByTags(name);
+    public Page<Document> getByTagName(@PathVariable String name, Pageable pageable) {
+
+        return documentRepository.findByTags(name, pageable);
     }
 
     @RequestMapping(value = "find/{tags}", method = RequestMethod.GET, produces = "application/json")
-    public List<Document> getByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type) {
+    public Page<Document> getByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type, Pageable pageable) {
 
         if (type.equals("OR")) {
-            return documentRepository.findByTagsIn(tags);
+            return documentRepository.findByTagsIn(tags, pageable);
         } else{
-            return documentRepository.findByTagsInExclusive(tags);
+            return documentRepository.findByTagsInExclusive(tags, pageable);
         }
     }
 
@@ -60,12 +64,12 @@ public class DocumentController {
     }
 
     @RequestMapping(value = "files/{name}", method = RequestMethod.GET)
-    public List<Document> findByFileName(@PathVariable String name) {
-        return documentRepository.findByFilename(quote(name));
+    public Page<Document> findByFileName(@PathVariable String name, Pageable pageable) {
+        return documentRepository.findByFilename(quote(name), pageable);
     }
 
     @RequestMapping(value = "add/{tag}", method = RequestMethod.GET)
-    public Document addTag(@PathVariable String tag, @RequestParam(value = "name") String name, @RequestParam(value = "path", defaultValue = "") String path) {
+    public Document addTag(@PathVariable String tag, @RequestParam(value = "name") String name, @RequestParam(value = "path", defaultValue = "") String path, Pageable pageable) {
 
         name = quote(name);
         path = quote(path);
