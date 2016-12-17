@@ -1,6 +1,5 @@
 package com.luiccn;
 
-import org.apache.solr.common.SolrDocument;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.solr.core.mapping.Indexed;
 
@@ -16,37 +15,56 @@ public class Document {
     @Indexed
     public String id;
 
+    @Indexed
+    public String path;
+
+    @Indexed
+    public String filename;
+
     @Indexed(name = "tags")
     public Collection<String> tags = new ArrayList<>();
 
-    public Document(String id, Collection<String> tags) {
+
+    public Document(String id, String path, String filename, Collection<String> tags) {
         this.id = id;
+        this.path = path;
+        this.filename = filename;
         this.tags = tags;
+    }
+
+    public void addTag(String tag) {
+        this.tags.add(tag);
     }
 
     public String getId() {
         return id;
     }
 
-    public Collection<String> getTags() {
-        return tags;
-    }
-
     public void setId(String id) {
         this.id = id;
     }
 
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    public void setFilename(String filename) {
+        this.filename = filename;
+    }
+
+    public Collection<String> getTags() {
+        return tags;
+    }
 
     public void setTags(Collection<String> tags) {
         this.tags = tags;
-    }
-
-    @Override
-    public String toString() {
-        final StringBuffer sb = new StringBuffer("Document{");
-        sb.append("id='").append(id).append('\'');
-        sb.append(", tags=").append(tags);
-        sb.append('}');
-        return sb.toString();
     }
 }

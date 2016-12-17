@@ -2,6 +2,9 @@ package com.luiccn;
 
 import org.springframework.data.solr.repository.SolrCrudRepository;
 
+import java.util.List;
+
+@SuppressWarnings("unchecked")
 public interface DocumentRepository extends SolrCrudRepository<Document, String> {
 
     @Override
@@ -9,5 +12,13 @@ public interface DocumentRepository extends SolrCrudRepository<Document, String>
 
     Document findById(String id);
 
-    Document findByTags(String tag);
+    List<Document> findByTags(String tag);
+
+    Document save(Document d);
+
+    List<Document> findByFilename(String filename);
+
+    Document findByFilenameAndPath(String filename, String path);
+
+
 }
