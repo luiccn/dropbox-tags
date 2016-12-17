@@ -1,8 +1,6 @@
 package com.luiccn;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,13 +21,14 @@ public class DocumentController {
 
 
     @RequestMapping(value = "/id/{id}", method = RequestMethod.GET, produces = "application/json")
-    Document getOne(@PathVariable String id) {
+    public @ResponseBody Document getOne(@PathVariable String id) {
         Document byId = documentRepository.findById(id);
         return byId;
     }
 
     @RequestMapping(value = "/name/{name}", method = RequestMethod.GET, produces = "application/json")
-    Document getByTagName(@PathVariable String name) {
+
+    public @ResponseBody Document getByTagName(@PathVariable String name) {
         Document byTags = documentRepository.findByTags(name);
         return byTags;
     }

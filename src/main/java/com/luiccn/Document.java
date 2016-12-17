@@ -9,15 +9,15 @@ import java.util.Collection;
 
 
 @org.springframework.data.solr.core.mapping.SolrDocument(solrCoreName = "tags")
-public class Document extends SolrDocument{
+public class Document {
 
 
     @Id
     @Indexed
-    private String id;
+    public String id;
 
     @Indexed(name = "tags")
-    private Collection<String> tags = new ArrayList<>();
+    public Collection<String> tags = new ArrayList<>();
 
     public Document(String id, Collection<String> tags) {
         this.id = id;
