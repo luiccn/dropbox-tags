@@ -83,8 +83,9 @@ public class DocumentController {
                 }
             }
             zos.close();
+            response.setStatus(200);
             IOUtils.copy(new ByteArrayInputStream(out.toByteArray()), response.getOutputStream());
-            response.getOutputStream();
+
         } catch (Exception e) {
             e.printStackTrace();
         }

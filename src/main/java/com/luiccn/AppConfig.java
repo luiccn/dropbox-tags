@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AppConfig {
 
-    @Value("${dropbox.download_size}")
+    @Value("${dropbox.downloadsize}")
     private long maximumDownloadSize;
 
     public AppConfig() {
