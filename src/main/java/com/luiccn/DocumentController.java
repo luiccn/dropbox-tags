@@ -2,6 +2,7 @@ package com.luiccn;
 
 import com.dropbox.core.v2.DbxClientV2;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -19,14 +20,15 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static com.luiccn.Utils.quote;
-import static com.luiccn.Utils.unQuote;
 
 @SuppressWarnings("SpringJavaAutowiringInspection")
 @RestController
 @RequestMapping("/tags")
 public class DocumentController {
 
-    private static final int MAX_DOWNLOAD_SIZE = 1024 * 1024 * 500; //500Mbytes
+    @Autowired
+    private AppConfig appConfig;
+
     private final DocumentRepository documentRepository;
     private final DbxClientV2 dbxClient;
 
@@ -36,7 +38,7 @@ public class DocumentController {
         dbxClient = dropboxClient;
     }
 
-    @RequestMapping(value = "find/{tags}", method = RequestMethod.GET, produces = "application/json")
+    @RequestMapping(value = "/find/{tags}", method = RequestMethod.GET, produces = "application/json")
     public Page<Document> getByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type, Pageable pageable) {
 
         if (type.equals("OR")) {
@@ -46,7 +48,7 @@ public class DocumentController {
         }
     }
 
-    @RequestMapping(value = "download/{tags}", method = RequestMethod.GET, produces = "application/json")
+    @RequestMapping(value = "/download/{tags}", method = RequestMethod.GET, produces = "application/json")
     public ResponseEntity<String> downloadByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type) {
 
         List<Document> toDownload;
@@ -75,10 +77,11 @@ public class DocumentController {
                 zos.closeEntry();
 
                 downloadSize+= downloadStream.size();
-                if (downloadSize >= MAX_DOWNLOAD_SIZE) {
+                if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
 
                     zos.close();
                     file.delete();
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Files are too large: "+ downloadSize + " B");
                 }
             }
             zos.close();
@@ -86,7 +89,7 @@ public class DocumentController {
         } catch (Exception e) {
             e.printStackTrace();
             file.delete();
-            return ResponseEntity.status(HttpStatus.BANDWIDTH_LIMIT_EXCEEDED).body("Files are too large: "+ downloadSize + " B");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went bad");
         }
     }
 
