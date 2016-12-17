@@ -11,15 +11,6 @@ import java.util.List;
 @SuppressWarnings("unchecked")
 public interface DocumentRepository extends SolrCrudRepository<Document, String> {
 
-    @Override
-    long count();
-
-
-
-    Document findById(String id);
-
-    Page<Document> findByTags(String tag, Pageable pageable);
-
     Document save(Document d);
 
     Page<Document> findByFilename(String filename, Pageable pageable);

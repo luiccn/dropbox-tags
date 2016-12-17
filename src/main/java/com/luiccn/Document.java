@@ -13,16 +13,16 @@ public class Document {
 
     @Id
     @Indexed
-    public String id;
+    private String id;
 
     @Indexed
-    public String path;
+    private String path;
 
     @Indexed
-    public String filename;
+    private String filename;
 
     @Indexed(name = "tags")
-    public Collection<String> tags = new ArrayList<>();
+    private Collection<String> tags = new ArrayList<>();
 
 
     public Document(String id, String path, String filename, Collection<String> tags) {
@@ -45,7 +45,7 @@ public class Document {
     }
 
     public String getPath() {
-        return path;
+        return Utils.unQuote(path);
     }
 
     public void setPath(String path) {
@@ -53,7 +53,7 @@ public class Document {
     }
 
     public String getFilename() {
-        return filename;
+        return Utils.unQuote(filename);
     }
 
     public void setFilename(String filename) {
