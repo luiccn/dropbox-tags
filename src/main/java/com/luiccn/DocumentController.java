@@ -9,7 +9,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @SuppressWarnings("SpringJavaAutowiringInspection")
 @RestController
@@ -41,10 +45,48 @@ public class DocumentController {
 
         if (type.equals("OR")) {
             return documentRepository.findByTagsIn(tags, pageable);
-        } else{
+        } else {
             return documentRepository.findByTagsInExclusive(tags, pageable);
         }
     }
+
+    @RequestMapping(value = "download/{tags}", method = RequestMethod.GET, produces = "application/json")
+    public void downloadByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type) {
+
+        List<Document> toDownload;
+
+        if (type.equals("OR")) {
+            toDownload = documentRepository.findByTagsIn(tags);
+        } else {
+            toDownload = documentRepository.findByTagsInExclusive(tags);
+        }
+
+        try {
+
+            FileOutputStream fos = new FileOutputStream(tags.stream().collect(Collectors.joining("-"))+".zip");
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
+            ZipOutputStream zos = new ZipOutputStream(bos);
+
+
+            for (Document document : toDownload) {
+                ByteArrayOutputStream downloadStream = new ByteArrayOutputStream();
+                dbxClient.files().download(getDownloadPath(document)).download(downloadStream);
+                ZipEntry z = new ZipEntry(document.getFilename());
+                zos.putNextEntry(z);
+                zos.write(downloadStream.toByteArray());
+                zos.closeEntry();
+            }
+
+            zos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getDownloadPath(Document document) {
+        return unQuote(document.getPath()) + "/" + unQuote(document.filename);
+    }
+
 
     @RequestMapping(value = "/files")
     public Metadata getFileByName(@RequestParam(value = "name") String name, @RequestParam(value = "path", defaultValue = "") String path) {
@@ -103,5 +145,9 @@ public class DocumentController {
 
     private String quote(String s) {
         return "\"" + s + "\"";
+    }
+
+    private String unQuote(String s) {
+        return s.replaceAll("\"", "");
     }
 }
