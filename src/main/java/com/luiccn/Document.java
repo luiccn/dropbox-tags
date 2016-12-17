@@ -67,4 +67,13 @@ public class Document {
     public void setTags(Collection<String> tags) {
         this.tags = tags;
     }
+
+    public void removeTag(String tag) {
+        tags.removeIf(s -> s.equals(tag));
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
 }
