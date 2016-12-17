@@ -1,6 +1,7 @@
 package com.luiccn;
 
 import com.dropbox.core.v2.DbxClientV2;
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
@@ -9,10 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -48,8 +47,10 @@ public class DocumentController {
         }
     }
 
-    @RequestMapping(value = "/download/{tags}", method = RequestMethod.GET, produces = "application/json")
-    public ResponseEntity<String> downloadByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type) {
+    @RequestMapping(value = "/download/{tags}", method = RequestMethod.GET)
+    public void downloadByTags(@PathVariable List<String> tags,
+                               @RequestParam(value = "type", defaultValue = "AND") String type,
+                               HttpServletResponse response) {
 
         List<Document> toDownload;
         int downloadSize = 0;
@@ -59,13 +60,13 @@ public class DocumentController {
         } else {
             toDownload = documentRepository.findByTagsInExclusive(tags);
         }
+        response.addHeader("Content-disposition", "attachment;"+tags.stream().collect(Collectors.joining("-"))+".zip");
+        response.setContentType("application/zip");
 
-        File file = new File(tags.stream().collect(Collectors.joining("-"))+".zip");
         try {
 
-            FileOutputStream fos = new FileOutputStream(file);
-            BufferedOutputStream bos = new BufferedOutputStream(fos);
-            ZipOutputStream zos = new ZipOutputStream(bos);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(out);
 
 
             for (Document document : toDownload) {
@@ -78,18 +79,14 @@ public class DocumentController {
 
                 downloadSize+= downloadStream.size();
                 if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
-
                     zos.close();
-                    file.delete();
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Files are too large: "+ downloadSize + " B");
                 }
             }
             zos.close();
-            return ResponseEntity.ok("Downloaded "+ downloadSize + " B");
+            IOUtils.copy(new ByteArrayInputStream(out.toByteArray()), response.getOutputStream());
+            response.getOutputStream();
         } catch (Exception e) {
             e.printStackTrace();
-            file.delete();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went bad");
         }
     }
 
