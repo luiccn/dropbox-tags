@@ -14,12 +14,14 @@ public class SolrContext {
 
     static final String SOLR_HOST = "solr.host";
 
+
     @Resource
     private Environment environment;
 
     @Bean
-    public HttpSolrClient solrServer() {
+    public HttpSolrClient solrClient() {
         String solrHost = environment.getRequiredProperty(SOLR_HOST);
+
         return new HttpSolrClient(solrHost);
     }
 }
