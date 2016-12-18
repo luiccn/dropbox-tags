@@ -5,13 +5,15 @@ import com.dropbox.core.v2.files.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.AdditionalAnswers;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class DocumentControllerTest {
@@ -163,7 +165,87 @@ public class DocumentControllerTest {
         assertEquals("/aa/bb", document.getPath());
     }
 
+    @Test
+    public void findByTags_AND() throws Exception {
+
+        //GIVEN document at SOLR with Tags, no dropbox check as it is checked on insert time
+        matches.add(new SearchMatch(SearchMatchType.BOTH, new Metadata("cc", "/aa/bb", "/aa/bb", "123")));
+        when(dropbox.files()).thenReturn(files);
+        when(files.search(anyString(), anyString())).thenReturn(searchResult);
+        when(searchResult.getMatches()).thenReturn(matches);
+
+        List<String> tags = new ArrayList<>();
+        tags.add("luiz");
+        tags.add("carlos");
+
+        List<String> findTags = new ArrayList<>();
+        tags.add("luiz");
+        tags.add("vvv");
+
+        List<Document> documents = new ArrayList<>();
+        documents.add(new Document("1", "/aa/bb", "cc", tags));
+
+        Page<Document> page = new PageImpl<>(documents);
+        Page<Document> pageEmpty = new PageImpl<>(Collections.emptyList());
 
 
+        DocumentRepository documentRepository = mock(DocumentRepository.class);
+        when(documentRepository.findByTagsIn(eq(findTags), any(Pageable.class)))
+                .thenReturn(page);
 
+        when(documentRepository.findByTagsInExclusive(eq(findTags), any(Pageable.class)))
+                .thenReturn(pageEmpty);
+
+        when(documentRepository.save(any(Document.class))).then(AdditionalAnswers.returnsFirstArg());
+        documentController = new DocumentController(documentRepository, dropbox);
+
+        //WHEN finding by tag
+        List<Document> foundDocuments = documentController.findByTags(findTags, "AND", null).getContent();
+
+        //THEN should return same document
+        assertEquals(0, foundDocuments.size());
+    }
+
+    @Test
+    public void findByTags_OR() throws Exception {
+
+        //GIVEN document at SOLR with Tags, no dropbox check as it is checked on insert time
+        matches.add(new SearchMatch(SearchMatchType.BOTH, new Metadata("cc", "/aa/bb", "/aa/bb", "123")));
+        when(dropbox.files()).thenReturn(files);
+        when(files.search(anyString(), anyString())).thenReturn(searchResult);
+        when(searchResult.getMatches()).thenReturn(matches);
+
+        List<String> tags = new ArrayList<>();
+        tags.add("luiz");
+        tags.add("carlos");
+
+        List<String> findTags = new ArrayList<>();
+        tags.add("luiz");
+        tags.add("vvv");
+
+        List<Document> documents = new ArrayList<>();
+        documents.add(new Document("1", "/aa/bb", "cc", tags));
+
+        Page<Document> page = new PageImpl<>(documents);
+        Page<Document> pageEmpty = new PageImpl<>(Collections.emptyList());
+
+
+        DocumentRepository documentRepository = mock(DocumentRepository.class);
+        when(documentRepository.findByTagsIn(eq(findTags), any(Pageable.class)))
+                .thenReturn(page);
+
+        when(documentRepository.findByTagsInExclusive(eq(findTags), any(Pageable.class)))
+                .thenReturn(pageEmpty);
+
+        documentController = new DocumentController(documentRepository, dropbox);
+
+        //WHEN finding by tag
+        List<Document> foundDocuments = documentController.findByTags(findTags, "OR", null).getContent();
+
+        //THEN should return same document
+        assertEquals(1, foundDocuments.size());
+        assertEquals("cc", foundDocuments.get(0).getFilename());
+        assertEquals("/aa/bb", foundDocuments.get(0).getPath());
+
+    }
 }

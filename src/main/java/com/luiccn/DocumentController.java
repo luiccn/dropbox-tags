@@ -79,19 +79,20 @@ public class DocumentController {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ZipOutputStream zos = new ZipOutputStream(out);
 
-
         for (Document document : toDownload) {
-            ByteArrayOutputStream downloadStream = new ByteArrayOutputStream();
-            dbxClient.files().download(getDownloadPath(document)).download(downloadStream);
-            ZipEntry z = new ZipEntry(document.getFilename());
-            zos.putNextEntry(z);
-            zos.write(downloadStream.toByteArray());
-            zos.closeEntry();
+            if (isDocumentInDropbox(document.getFilename(), document.getPath())) {
+                ByteArrayOutputStream downloadStream = new ByteArrayOutputStream();
+                dbxClient.files().download(getDownloadPath(document)).download(downloadStream);
+                ZipEntry z = new ZipEntry(document.getFilename());
+                zos.putNextEntry(z);
+                zos.write(downloadStream.toByteArray());
+                zos.closeEntry();
 
-            downloadSize+= downloadStream.size();
-            if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
-                zos.close();
-                response.setStatus(500);
+                downloadSize+= downloadStream.size();
+                if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
+                    zos.close();
+                    response.setStatus(500);
+                }
             }
         }
         zos.close();
