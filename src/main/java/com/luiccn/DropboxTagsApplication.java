@@ -25,7 +25,11 @@ public class DropboxTagsApplication {
         props.load(in);
         in.close();
 
-        if (props.getProperty("dropbox.token").isEmpty()) {
+
+        String property = props.getProperty("dropbox.token");
+
+
+        if (property == null || property.isEmpty()) {
             DbxRequestConfig requestConfig = new DbxRequestConfig(props.getProperty("dropbox.appname"));
             DbxAppInfo appInfo = new DbxAppInfo(props.getProperty("dropbox.key"), props.getProperty("dropbox.secret"));
             DbxWebAuth auth = new DbxWebAuth(requestConfig, appInfo);
