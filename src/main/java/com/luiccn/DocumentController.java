@@ -4,15 +4,13 @@ import com.dropbox.core.DbxException;
 import com.dropbox.core.v2.DbxClientV2;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,7 +38,7 @@ public class DocumentController {
     }
 
     @RequestMapping(value = "/find/{tags}", method = RequestMethod.GET, produces = "application/json")
-    public Page<Document> getByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type, Pageable pageable) {
+    public Page<Document> findByTags(@PathVariable List<String> tags, @RequestParam(value = "type", defaultValue = "AND") String type, Pageable pageable) {
 
         if (type.equals("OR")) {
             return documentRepository.findByTagsIn(tags, pageable);
@@ -62,37 +60,43 @@ public class DocumentController {
         } else {
             toDownload = documentRepository.findByTagsInExclusive(tags);
         }
+
         response.addHeader("Content-disposition", "attachment;"+tags.stream().collect(Collectors.joining("-"))+".zip");
         response.setContentType("application/zip");
 
         if (toDownload.size() != 0) {
             try {
 
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                ZipOutputStream zos = new ZipOutputStream(out);
-
-
-                for (Document document : toDownload) {
-                    ByteArrayOutputStream downloadStream = new ByteArrayOutputStream();
-                    dbxClient.files().download(getDownloadPath(document)).download(downloadStream);
-                    ZipEntry z = new ZipEntry(document.getFilename());
-                    zos.putNextEntry(z);
-                    zos.write(downloadStream.toByteArray());
-                    zos.closeEntry();
-
-                    downloadSize+= downloadStream.size();
-                    if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
-                        zos.close();
-                    }
-                }
-                zos.close();
-                response.setStatus(200);
-                IOUtils.copy(new ByteArrayInputStream(out.toByteArray()), response.getOutputStream());
+                IOUtils.copy(getDownloadAsStream(response, toDownload, downloadSize), response.getOutputStream());
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private ByteArrayInputStream getDownloadAsStream(HttpServletResponse response, List<Document> toDownload, int downloadSize) throws DbxException, java.io.IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ZipOutputStream zos = new ZipOutputStream(out);
+
+
+        for (Document document : toDownload) {
+            ByteArrayOutputStream downloadStream = new ByteArrayOutputStream();
+            dbxClient.files().download(getDownloadPath(document)).download(downloadStream);
+            ZipEntry z = new ZipEntry(document.getFilename());
+            zos.putNextEntry(z);
+            zos.write(downloadStream.toByteArray());
+            zos.closeEntry();
+
+            downloadSize+= downloadStream.size();
+            if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
+                zos.close();
+                response.setStatus(500);
+            }
+        }
+        zos.close();
+        response.setStatus(200);
+        return new ByteArrayInputStream(out.toByteArray());
     }
 
     private String getDownloadPath(Document document) {
@@ -141,7 +145,10 @@ public class DocumentController {
         long count = 0;
         try {
             count = (long) dbxClient.files()
-                    .search(unQuote(path), unQuote(name)).getMatches().size();
+                    .search(unQuote(path), unQuote(name))
+                    .getMatches()
+                    .size();
+
         } catch (DbxException e) {
             e.printStackTrace();
         }

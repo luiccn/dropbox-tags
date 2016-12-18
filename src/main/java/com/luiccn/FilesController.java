@@ -13,6 +13,7 @@ import java.util.Optional;
 
 import static com.luiccn.Utils.quote;
 
+@SuppressWarnings("SpringJavaAutowiringInspection")
 @RestController
 @RequestMapping("/files")
 public class FilesController {
