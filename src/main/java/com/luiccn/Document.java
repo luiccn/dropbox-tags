@@ -76,4 +76,15 @@ public class Document {
     public int hashCode() {
         return id.hashCode();
     }
+
+    @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer("Document{");
+        sb.append("id='").append(id).append('\'');
+        sb.append(", path='").append(path).append('\'');
+        sb.append(", filename='").append(filename).append('\'');
+        sb.append(", tags=").append(tags);
+        sb.append('}');
+        return sb.toString();
+    }
 }

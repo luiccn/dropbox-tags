@@ -1,5 +1,6 @@
 package com.luiccn;
 
+import com.dropbox.core.DbxException;
 import com.dropbox.core.v2.DbxClientV2;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static com.luiccn.Utils.quote;
+import static com.luiccn.Utils.unQuote;
 
 @SuppressWarnings("SpringJavaAutowiringInspection")
 @RestController
@@ -63,31 +65,33 @@ public class DocumentController {
         response.addHeader("Content-disposition", "attachment;"+tags.stream().collect(Collectors.joining("-"))+".zip");
         response.setContentType("application/zip");
 
-        try {
+        if (toDownload.size() != 0) {
+            try {
 
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ZipOutputStream zos = new ZipOutputStream(out);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                ZipOutputStream zos = new ZipOutputStream(out);
 
 
-            for (Document document : toDownload) {
-                ByteArrayOutputStream downloadStream = new ByteArrayOutputStream();
-                dbxClient.files().download(getDownloadPath(document)).download(downloadStream);
-                ZipEntry z = new ZipEntry(document.getFilename());
-                zos.putNextEntry(z);
-                zos.write(downloadStream.toByteArray());
-                zos.closeEntry();
+                for (Document document : toDownload) {
+                    ByteArrayOutputStream downloadStream = new ByteArrayOutputStream();
+                    dbxClient.files().download(getDownloadPath(document)).download(downloadStream);
+                    ZipEntry z = new ZipEntry(document.getFilename());
+                    zos.putNextEntry(z);
+                    zos.write(downloadStream.toByteArray());
+                    zos.closeEntry();
 
-                downloadSize+= downloadStream.size();
-                if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
-                    zos.close();
+                    downloadSize+= downloadStream.size();
+                    if (downloadSize >= appConfig.getMaximumDownloadSize() ) {
+                        zos.close();
+                    }
                 }
-            }
-            zos.close();
-            response.setStatus(200);
-            IOUtils.copy(new ByteArrayInputStream(out.toByteArray()), response.getOutputStream());
+                zos.close();
+                response.setStatus(200);
+                IOUtils.copy(new ByteArrayInputStream(out.toByteArray()), response.getOutputStream());
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -96,19 +100,23 @@ public class DocumentController {
     }
 
     @RequestMapping(value = "/{tag}", method = RequestMethod.PUT)
-    public Document addTag(@PathVariable String tag, @RequestParam(value = "name") String name, @RequestParam(value = "path", defaultValue = "") String path, Pageable pageable) {
+    public Document addTag(@PathVariable String tag, @RequestParam(value = "name") String name, @RequestParam(value = "path", defaultValue = "") String path) {
 
         name = quote(name);
         path = quote(path);
 
-        Document fromSolr = documentRepository.findByFilenameAndPath(name, path);
+        if (isDocumentInDropbox(name, path)) {
+            Document fromSolr = documentRepository.findByFilenameAndPath(name, path);
 
-        if (fromSolr == null) {
-            Document document = new Document(null, path, name, Collections.singletonList(tag));
-            return documentRepository.save(document);
+            if (fromSolr == null) {
+                Document document = new Document(null, path, name, Collections.singletonList(tag));
+                return documentRepository.save(document);
+            } else {
+                fromSolr.addTag(tag);
+                return documentRepository.save(fromSolr);
+            }
         } else {
-            fromSolr.addTag(tag);
-            return documentRepository.save(fromSolr);
+            return null;
         }
     }
 
@@ -126,5 +134,18 @@ public class DocumentController {
         }
 
         return null;
+    }
+
+    boolean isDocumentInDropbox(String name, String path) {
+
+        long count = 0;
+        try {
+            count = (long) dbxClient.files()
+                    .search(unQuote(path), unQuote(name)).getMatches().size();
+        } catch (DbxException e) {
+            e.printStackTrace();
+        }
+
+        return count != 0;
     }
 }
